@@ -1,0 +1,16 @@
+{
+  "name": "spec-kit",
+  "description": "Spec-Driven Development workflow for Claude Code — portable repackaging of github/spec-kit as an installable plugin. Provides /spec-kit:specify, /spec-kit:plan, /spec-kit:tasks, /spec-kit:implement and the full SDD cycle without requiring uv or Python at install time.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Phuong Nguyen",
+    "email": "vodka21090@gmail.com"
+  },
+  "homepage": "https://github.com/vodka21090/spec-kit-system",
+  "repository": "https://github.com/vodka21090/spec-kit-system",
+  "license": "MIT",
+  "metadata": {
+    "speckit_upstream": "0.8.13",
+    "speckit_source": "https://github.com/github/spec-kit"
+  }
+}
