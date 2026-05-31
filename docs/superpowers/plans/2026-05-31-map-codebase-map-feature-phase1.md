@@ -24,7 +24,7 @@
 | Doc | Frozen headings → anchors |
 |-----|---------------------------|
 | README | `what-this-is`, `documents`, `start-here` |
-| ARCHITECTURE | `system-overview`, `pattern-overview`, `layers`, `data-flow`, `key-abstractions`, `entry-points`, `error-handling`, `cross-cutting-concerns` |
+| ARCHITECTURE | `system-overview`, `pattern-overview`, `layers`, `module-guide`, `data-flow`, `key-abstractions`, `entry-points`, `error-handling`, `cross-cutting-concerns` |
 | TECH-STACK | `languages`, `runtime`, `frameworks`, `key-dependencies`, `configuration`, `platform-requirements` |
 | STRUCTURE | `directory-layout`, `directory-purposes`, `key-file-locations`, `naming-conventions`, `where-to-add-new-code`, `special-directories`, `navigation-index` |
 | CONVENTIONS | `naming-patterns`, `code-style`, `import-organisation`, `error-handling`, `logging`, `comments`, `function-design`, `module-design` |

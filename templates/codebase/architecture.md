@@ -19,6 +19,7 @@ sections:
   - { id: system-overview, summary: "[high-level module/layer diagram]" }
   - { id: pattern-overview, summary: "[overall pattern + key characteristics]" }
   - { id: layers, summary: "[conceptual layers and dependencies]" }
+  - { id: module-guide, summary: "[per-module purpose, key files, exports, deps, dependents]" }
   - { id: data-flow, summary: "[request/execution lifecycle]" }
   - { id: key-abstractions, summary: "[core concepts and patterns]" }
   - { id: entry-points, summary: "[where execution starts]" }
@@ -66,6 +67,29 @@ graph TB
 - Location: [`path/to/layer/`]
 - Depends on: [What it uses: e.g., "data layer only"]
 - Used by: [What uses it: e.g., "API routes"]
+
+## Module Guide
+
+[One subsection per logical module — a cohesive unit of behaviour, which may span directories.
+Keep this view logical (public surface + relationships); physical locations live in
+STRUCTURE.md#directory-purposes. Order modules by importance.]
+
+### [Module Name]
+
+**Purpose**: [what this module is responsible for]
+**Entry point**: [`path`] ⭐
+**Key files**:
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| [`path`] | [one line] | [N] |
+
+**Exports**: [key public APIs other modules consume]
+**Dependencies**: [modules/packages this needs]
+**Dependents**: [modules that need this]
+
+[Repeat per module. The `Lines` column is a dependency-free size signal (`wc -l`); a `Tokens`
+column returns in Phase 2 when the token scanner lands.]
 
 ## Data Flow
 

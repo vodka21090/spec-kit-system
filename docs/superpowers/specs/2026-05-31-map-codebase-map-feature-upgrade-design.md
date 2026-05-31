@@ -195,6 +195,7 @@ Two fills:
 | 6 | AGENTS.md discovery line extended (note per-feature context under `specs/`) | task #3 |
 | 7 | Size guardrail at recon: count files (`git ls-files`/Glob); if over threshold, warn + suggest scoping by sub-path or using map-feature | large-repo safe-fail |
 | 8 | Bounded mermaid diagrams in ARCHITECTURE.md (System Overview `graph TB`, Data Flow `sequenceDiagram`) | human onboarding (visual) |
+| 9 | `## Module Guide` in ARCHITECTURE.md (per-module purpose, key files, exports, deps, dependents; cross-links STRUCTURE for physical location). `Lines` column now; `Tokens` returns in Phase 2 | AI-navigable + module relationships |
 
 The skill keeps the **fixed 4-focus model** in Phase 1 (fine for small/medium repos — the
 common case). Large-repo users scope manually via the already-supported sub-path arg; the size
