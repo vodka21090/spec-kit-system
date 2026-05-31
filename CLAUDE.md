@@ -67,7 +67,8 @@ No build/test/lint pipeline. Validation = manual smoke:
 ```powershell
 claude --plugin-dir C:/dev/spec-kit-system
 # Then in session:
-/help                       # 17 skills /spec-kit:* visible
+/help                       # 18 skills /spec-kit:* visible
+/spec-kit:map-feature       # scouts one feature's blast radius -> specs/<feature>/codebase-context.md
 /spec-kit:init              # bootstraps .specify/ in CWD
 /spec-kit:specify <feat>    # creates specs/NNN-<slug>/spec.md
 /spec-kit:map-codebase      # scans repo -> docs/codebase/*.md
