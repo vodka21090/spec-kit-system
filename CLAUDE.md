@@ -13,14 +13,17 @@ Plugin name: `spec-kit`. Skills namespaced `/spec-kit:<name>` (e.g. `/spec-kit:s
 ```
 .claude-plugin/plugin.json    Manifest (name, version, upstream pin)
 SPECKIT_VERSION               Pinned upstream version
-skills/                       15 skills
+skills/                       18 skills
   init/                         Bootstrap .specify/ into project (new, plugin-only)
   init-agents-md/               Create/maintain AGENTS.md from codebase discovery (new, plugin-only)
+  map-codebase/                 Scan repo -> docs/codebase/*.md onboarding map (new, plugin-only)
+  map-feature/                  Scout one feature's blast radius -> specs/<feature>/codebase-context.md (new, plugin-only)
   constitution/ specify/ clarify/ plan/ tasks/ analyze/ implement/ checklist/ taskstoissues/
   git-{commit,feature,initialize,remote,validate}/
 assets/specify/               Bootstrap payload -- vendored .specify/ tree
   templates/ scripts/{bash,powershell}/ memory/ extensions/git/
   extensions.yml workflows/ integrations/ init-options.json integration.json
+templates/codebase/           Codebase-map doc templates + shared agent-prompt.md + feature-context.md (plugin-owned; NOT upstream payload)
 bin/init-project.{sh,ps1}     Idempotent bootstrap helpers (POSIX + Windows)
 tmp/                          Upstream probe (uv-installed). Reference only, do not edit.
 ```
@@ -30,6 +33,7 @@ tmp/                          Upstream probe (uv-installed). Reference only, do 
 - **Skills vendored verbatim** from `tmp/.claude/skills/speckit-*/SKILL.md`. Only adaptation: `name:` field renamed (drop `speckit-` prefix), cross-refs `/speckit-X` -> `/spec-kit:X`, hook-rule sentence rewritten so `speckit.git.commit` -> `/spec-kit:git-commit` (was `/speckit-git-commit`).
 - **Payload (`assets/specify/`) byte-for-byte** copy of `tmp/.specify/`. Do not edit in place -- changes get clobbered on next upstream sync. To customize per project, use `.specify/templates/overrides/` in the project user.
 - **Sync upstream** = re-run `specify init` into `tmp/`, replace `assets/specify/`, re-run rename+sed pipeline on `skills/`, bump `SPECKIT_VERSION` + manifest `metadata.speckit_upstream`. Automation TODO: `bin/sync-upstream.sh`.
+- **Plugin-owned, never clobbered.** `templates/codebase/` (used by `/spec-kit:map-codebase` and `/spec-kit:map-feature`) is authored by this plugin, NOT vendored from upstream. The sync step touches `assets/specify/` only -- it must never delete `templates/`, `skills/map-codebase/`, or `skills/map-feature/`.
 
 ### Portability Stance
 
@@ -63,9 +67,10 @@ No build/test/lint pipeline. Validation = manual smoke:
 ```powershell
 claude --plugin-dir C:/dev/spec-kit-system
 # Then in session:
-/help                       # 15 skills /spec-kit:* visible
+/help                       # 17 skills /spec-kit:* visible
 /spec-kit:init              # bootstraps .specify/ in CWD
 /spec-kit:specify <feat>    # creates specs/NNN-<slug>/spec.md
+/spec-kit:map-codebase      # scans repo -> docs/codebase/*.md
 ```
 
 Sanity greps after upstream sync:
