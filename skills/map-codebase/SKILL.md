@@ -36,14 +36,14 @@ Templates live at `${CLAUDE_PLUGIN_ROOT}/templates/codebase/` (plugin-owned, not
 - **Cite real paths.** Every finding references an actual file/dir in backticks, e.g. `` `src/services/user.ts` ``. If you can't point to it, don't claim it.
 - **Evidence over guesswork.** Report what the code shows. Mark anything inferred as "suspected". Do not invent bugs, metrics, or patterns.
 - **Length cap.** Target 80–250 lines per document. Prescriptive, not padded. `README.md` stays short (a table of contents, not a duplicate).
-- **Date.** Use today's date for every `Analysis Date:` field.
+- **Date.** Use today's date for every `analysis_date` frontmatter field.
 
 ## Execution
 
 ### Step 0 — Scope and existing-map check
 
 1. Determine scope: default to the whole repository. If the user passed an argument, treat it as a sub-path to focus on (reject paths containing `..`, leading `/`, or shell metacharacters).
-2. Check whether `docs/codebase/` already exists. **If it does, do NOT overwrite silently.** Report when it was generated (read the `Analysis Date` in `README.md`) and ask the user to choose:
+2. Check whether `docs/codebase/` already exists. **If it does, do NOT overwrite silently.** Report when it was generated (read the `analysis_date` frontmatter in `README.md`) and ask the user to choose:
    - **(a) Refresh all** — regenerate all 8 files.
    - **(b) Update changed only** — regenerate only the documents whose underlying areas changed since the last map (use `git log`/`git diff` to judge; fall back to (a) if you can't tell).
    - **(c) Skip** — leave the existing map untouched.
@@ -85,8 +85,8 @@ Spawn **four `Agent` calls in a single message** so they run concurrently. Give 
 > `<SCOPE>` = <SCOPE>, `<DATE>` = <DATE>, `<SHA>` = <SHA>.
 >
 > Every output file MUST carry the frontmatter v2 block (schema_version, doc, analysis_date,
-> generated_by, source_sha, sections) using the frozen canonical headings. README and STRUCTURE
-> additionally carry Tier-3 fields (modules, entry_points, key_files). Obey the hard rules and the
+> generated_by, source_sha, sections) using the frozen canonical headings. README additionally
+> carries Tier-3 fields (modules, entry_points, docs); STRUCTURE carries key_files. Obey the hard rules and the
 > "frontmatter is an index of the body" discipline from the shared prompt. Return a brief
 > confirmation listing the files written and their line counts.
 

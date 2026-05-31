@@ -31,8 +31,8 @@ Both `/spec-kit:map-codebase` and `/spec-kit:map-feature` spawn their reading ag
 > ---
 > ```
 > Use the **frozen canonical headings** so anchors are stable (see the skill's anchor contract).
-> README and STRUCTURE additionally carry Tier-3 index fields: `modules`, `entry_points`,
-> `key_files: [{ path, purpose, see }]`.
+> README additionally carries Tier-3 index fields `modules`, `entry_points`, `docs`; STRUCTURE
+> carries `key_files: [{ path, purpose, see }]`.
 >
 > **Discipline:** frontmatter is an INDEX of the body — every field must be derivable from the
 > doc's prose. Do not put facts only in frontmatter. Mermaid diagrams are high-level (modules /
