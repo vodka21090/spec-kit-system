@@ -101,8 +101,9 @@ sections: [{ id, summary }]
 ## Vùng ảnh hưởng (blast radius)        # existing files the feature touches; cite paths
 ## Vị trí trong kiến trúc (architectural fit)
     # layers crossed (route→service→repo), local data flow, architectural constraints
-    # LINK-OR-DERIVE: if docs/codebase/ARCHITECTURE.md exists → deep-link its anchors;
-    #                 else → derive a mini local-architecture inline
+    # + one bounded mermaid sequenceDiagram/graph of the LOCAL blast-radius flow
+    # LINK-OR-DERIVE: if docs/codebase/ARCHITECTURE.md exists → deep-link its anchors/diagram;
+    #                 else → derive a mini local-architecture (+ local diagram) inline
 ## Chỗ thêm code mới                     # insertion points, by convention
 ## Pattern nên tái dùng                  # similar existing impls to mirror
 ## Convention vùng này                   # local naming/structure/testing
@@ -150,6 +151,23 @@ and publish it via `sections:`. This is what makes map-feature's link-or-derive 
 (module-level, capped to respect the 80–250 line limit). Agents grep one table; humans read it
 as a per-file TOC.
 
+**(d) Mermaid diagrams — bounded, high-level.** Mermaid is fenced ` ```mermaid ` Markdown, so
+it stays portable (non-rendering viewers show the source) — the earlier "out of scope" call was
+over-cautious. Placement, no duplication:
+- `ARCHITECTURE.md` → `## System Overview` carries a `graph TB` of modules/layers; `## Data Flow`
+  carries `sequenceDiagram`(s) for the primary flows (request, auth).
+- `feature-context.md` → `## Vị trí trong kiến trúc` carries one small `sequenceDiagram`/`graph`
+  of the **local** blast-radius flow only.
+- `README.md` stays text + links to the ARCHITECTURE diagram (no duplicate diagram → no drift).
+
+Discipline (same spirit as the frontmatter rule):
+- **High-level only** — nodes are modules/layers and primary flows, **never one-node-per-file**.
+- **A diagram visualizes prose already in the doc — not a second source of truth.**
+- Templates ship a **canonical fenced skeleton** so agents fill a known shape (fewer broken
+  diagrams). Diagram sections are part of the frozen-heading anchor contract.
+- map-feature obeys link-or-derive: if `ARCHITECTURE.md` exists, link its diagram anchor and draw
+  only the local flow; else derive the local diagram inline.
+
 **Load-bearing discipline:** *frontmatter is an INDEX of the body, not a second source of
 truth.* Every field must be derivable from what the doc already states — no facts that live
 only in frontmatter. This is what keeps rich frontmatter from drifting away from the markdown.
@@ -176,6 +194,7 @@ Two fills:
 | 5 | Shared spawn-prompt v2 | task #2 |
 | 6 | AGENTS.md discovery line extended (note per-feature context under `specs/`) | task #3 |
 | 7 | Size guardrail at recon: count files (`git ls-files`/Glob); if over threshold, warn + suggest scoping by sub-path or using map-feature | large-repo safe-fail |
+| 8 | Bounded mermaid diagrams in ARCHITECTURE.md (System Overview `graph TB`, Data Flow `sequenceDiagram`) | human onboarding (visual) |
 
 The skill keeps the **fixed 4-focus model** in Phase 1 (fine for small/medium repos — the
 common case). Large-repo users scope manually via the already-supported sub-path arg; the size
@@ -203,7 +222,8 @@ hooks:
 ### 4.7 Build sequence (Phase 1)
 
 1. Shared `agent-prompt.md` (skeleton + schema v2 + anchor contract).
-2. Upgrade 8 templates (frontmatter v2, frozen headings, nav index in STRUCTURE).
+2. Upgrade 8 templates (frontmatter v2, frozen headings, nav index in STRUCTURE, mermaid
+   skeletons in ARCHITECTURE).
 3. New `feature-context.md` template.
 4. New `map-feature/SKILL.md`.
 5. Upgrade `map-codebase/SKILL.md` (shared prompt, frontmatter v2, `source_sha`, size guardrail).
@@ -246,5 +266,4 @@ map-feature"). Read this section, then run the brainstorming flow on items 1–3
 - Porting Cartographer's Python/tiktoken scanner verbatim (portability conflict).
 - A separate machine-readable `index.json` (grep over frontmatter + nav table suffices; revisit
   only if programmatic tooling consumes it).
-- Mermaid diagrams (not requested; templates stay portable Markdown).
 - Multi-assistant adapters (Copilot/Cursor) — out of scope, per CLAUDE.md portability stance.
