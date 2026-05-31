@@ -16,7 +16,7 @@ analysis_date: [YYYY-MM-DD]
 generated_by: /spec-kit:map-codebase
 source_sha: [short-sha]
 sections:
-  - { id: directory-layout, summary: "[top-level tree]" }
+  - { id: directory-layout, summary: "[annotated multi-level tree, key nodes marked]" }
   - { id: directory-purposes, summary: "[what lives in each dir]" }
   - { id: key-file-locations, summary: "[entry points, config, core, tests, docs]" }
   - { id: naming-conventions, summary: "[file/dir naming rules]" }
@@ -31,13 +31,24 @@ key_files:
 
 ## Directory Layout
 
-[ASCII tree of top-level directories with purpose — use ├── └── │ characters.]
+[Tree with purpose annotations. Expand 2–3 levels deep for directories that carry the architecture
+or show where to add code; collapse homogeneous/leaf-heavy directories with `…N files`. Annotate
+every shown node with its purpose. Mark entry points and key files with ⭐. Use ├── └── │ characters.
+Depth guideline: show a directory's children when they reveal architecture or navigation; collapse
+when homogeneous (a flat list of components, tests, fixtures).]
 
 ```
 [project-root]/
-├── [dir]/          # [Purpose]
-├── [dir]/          # [Purpose]
-└── [file]          # [Purpose]
+├── src/                      # ⭐ application code
+│   ├── api/                  # HTTP layer — routes, middleware
+│   │   ├── routes.ts         # ⭐ route table
+│   │   └── middleware/       # auth, rate-limit, error handlers
+│   ├── services/             # business logic (one file per domain)
+│   ├── lib/                  # shared helpers, no domain logic
+│   └── index.ts              # ⭐ entry point
+├── tests/                    # mirrors src/ layout  (…42 files)
+├── docs/                     # authored + generated docs
+└── package.json              # deps + scripts
 ```
 
 ## Directory Purposes
