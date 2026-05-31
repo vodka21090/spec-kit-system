@@ -33,7 +33,9 @@
 | CONCERNS | `tech-debt`, `known-bugs`, `security-considerations`, `performance-bottlenecks`, `fragile-areas`, `dependencies-at-risk`, `test-coverage-gaps` |
 | FEATURE-CONTEXT | `blast-radius`, `architectural-fit`, `where-to-add-code`, `patterns-to-reuse`, `local-conventions`, `integration-touchpoints`, `risks-and-tests-to-keep-green`, `open-questions` |
 
-> **Decision:** FEATURE-CONTEXT uses **English headings** (like the other 8 docs) for anchor stability + cross-doc consistency. Body prose may be Vietnamese; headings/anchors are English.
+> **Decision:** all generated template/document content is **English** (headings *and* body
+> prose), matching the other 8 docs. Vietnamese is used only in chat with the user, never inside
+> generated files. English headings also keep anchors stable.
 
 ---
 
@@ -593,7 +595,7 @@ Template for `specs/<feature>/codebase-context.md` — the blast-radius scout ou
 `/spec-kit:map-feature`. Maps the **existing** code a feature will touch, before plan/implement.
 
 **Purpose:** Ground planning and implementation in real code. Every claim cites a real path in
-backticks. Headings are English (stable anchors); body prose may be Vietnamese.
+backticks. All content is English (headings and body prose); Vietnamese is for chat only.
 
 ---
 
