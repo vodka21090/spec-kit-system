@@ -43,12 +43,33 @@ Templates live at `${CLAUDE_PLUGIN_ROOT}/templates/codebase/` (plugin-owned, not
 ### Step 0 — Scope and existing-map check
 
 1. Determine scope: default to the whole repository. If the user passed an argument, treat it as a sub-path to focus on (reject paths containing `..`, leading `/`, or shell metacharacters).
-2. Check whether `docs/codebase/` already exists. **If it does, do NOT overwrite silently.** Report when it was generated (read the `analysis_date` frontmatter in `README.md`) and ask the user to choose:
-   - **(a) Refresh all** — regenerate all 8 files.
-   - **(b) Update changed only** — regenerate only the documents whose underlying areas changed since the last map (use `git log`/`git diff` to judge; fall back to (a) if you can't tell).
-   - **(c) Skip** — leave the existing map untouched.
+2. Check whether `docs/codebase/` already exists. **If it does, do NOT overwrite silently.** Report when it was generated (read the `analysis_date`/`source_sha` frontmatter in `README.md`).
 
-   Wait for the answer before proceeding.
+   **Incremental detection (git repos with a saved manifest).** If `docs/codebase/.manifest.tsv` exists and this is a git repo, run the scanner again to a temporary manifest (via the out-file arg) and diff by `hash`:
+   - POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" . docs/codebase/.manifest.new.tsv`
+   - PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -OutFile docs/codebase/.manifest.new.tsv`
+
+   Compare the data rows (ignore `#` header lines) of the new manifest against `docs/codebase/.manifest.tsv`. The **changed set** = rows whose `hash` differs (content changed), rows present only in the new manifest (added), and paths present only in the old manifest (removed).
+
+   - **Changed set empty → report "Map is current at `<source_sha>`, nothing to do" and STOP.** Do not dispatch any agents. (This is the no-op short-circuit.)
+   - **Changed set non-empty →** present the changed files grouped by `module`, plus a **suggested regeneration set** derived from the conservative coverage table below, then ask the user to choose:
+     - **(a) Refresh all** — regenerate all 8 files.
+     - **(b) Update suggested only** — regenerate just the suggested docs; leave the rest, but rewrite their `source_sha` and overwrite `.manifest.tsv`.
+     - **(c) Skip** — leave the existing map untouched.
+
+   If there is no `.manifest.tsv` (map predates this feature) or this is not a git repo, fall back to the previous behaviour: judge changed areas with `git log`/`git diff` if available, otherwise offer (a) Refresh all / (c) Skip.
+
+   **Conservative coverage table (default on any uncertainty = full refresh):**
+
+   | Change signal | Suggested docs |
+   |---|---|
+   | Lockfile/manifest (`package.json`, `*.lock`, `go.mod`, `pyproject.toml`, `Cargo.toml`) | TECH-STACK, INTEGRATIONS |
+   | Test-only files (`*_test.*`, `*.spec.*`, `*.test.*`, `tests/`, `spec/`) | TESTING |
+   | Top-level module added/removed | STRUCTURE, ARCHITECTURE, README |
+   | CI/config/env (`.github/`, `Dockerfile`, `*.yml` CI, `.env.example`) | CONCERNS, INTEGRATIONS |
+   | Changes spanning more than 3 modules, ambiguous, or general source churn | **Full refresh** (CONVENTIONS always resolves here) |
+
+   Wait for the answer before proceeding. Delete the temporary `docs/codebase/.manifest.new.tsv` after comparing. Whenever you regenerate any document, also overwrite `docs/codebase/.manifest.tsv` with the fresh scan so the next run diffs against current state.
 
 ### Step 1 — Quick recon (you, on the main thread)
 
