@@ -136,6 +136,14 @@ The skill persists the scanner output at **`docs/codebase/.manifest.tsv`**, **gi
 (travels with the repo so collaborators who pull the map can also run incremental). It records
 the exact repo state the current map was built from.
 
+**The scanner excludes `docs/codebase/` from its own scan** (`git ls-files … ':(exclude)docs/codebase/'`).
+This is load-bearing for the no-op short-circuit: that directory holds the map's *generated
+outputs* (the 8 docs **and** the tracked manifest). If the scan included them, every regenerated
+map would show its own outputs as "changed" — the manifest can never contain its own correct
+hash — so the changed set would never be empty and the no-op could never fire. The comparison
+scan on re-run is written to a temp path **outside** the repo so it cannot be committed by
+accident; only the post-regeneration manifest lands in `docs/codebase/`.
+
 ### 5.2 Re-run flow
 
 1. Run `bin/scan-codebase` → new manifest in memory.

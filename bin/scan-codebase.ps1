@@ -24,7 +24,10 @@ if ($LASTEXITCODE -ne 0 -or -not $sha) { $sha = 'unknown' }
 $prefix = ''
 if ($Scope -ne '.') { $prefix = ($Scope.TrimEnd('/')) + '/' }
 
-$paths = (& git -c core.quotePath=false ls-files -- $Scope) | Where-Object { $_ -ne '' }
+# Exclude docs/codebase/ — map-codebase's own generated output (the 8 docs + this
+# manifest). Scanning it would make the map look changed on every regen and break the
+# incremental no-op short-circuit.
+$paths = (& git -c core.quotePath=false ls-files -- $Scope ':(exclude)docs/codebase/') | Where-Object { $_ -ne '' }
 
 $lines = New-Object System.Collections.Generic.List[string]
 foreach ($f in $paths) {

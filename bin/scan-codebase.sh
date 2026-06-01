@@ -24,8 +24,11 @@ SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 prefix=""
 [ "$SCOPE" != "." ] && prefix="${SCOPE%/}/"
 
+# Exclude docs/codebase/ — that is map-codebase's own generated output (the 8 docs
+# plus this manifest). Scanning it would make the map appear to change every time it
+# is regenerated, and would stop the incremental no-op short-circuit from ever firing.
 body="$(
-  git -c core.quotePath=false ls-files -- "$SCOPE" | while IFS= read -r f; do
+  git -c core.quotePath=false ls-files -- "$SCOPE" ':(exclude)docs/codebase/' | while IFS= read -r f; do
     [ -n "$f" ] || continue
     [ -f "$f" ] || continue
     bytes=$(wc -c < "$f")

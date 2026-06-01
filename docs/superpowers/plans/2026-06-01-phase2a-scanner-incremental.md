@@ -70,8 +70,11 @@ SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 prefix=""
 [ "$SCOPE" != "." ] && prefix="${SCOPE%/}/"
 
+# Exclude docs/codebase/ — that is map-codebase's own generated output (the 8 docs
+# plus this manifest). Scanning it would make the map appear to change every time it
+# is regenerated, and would stop the incremental no-op short-circuit from ever firing.
 body="$(
-  git -c core.quotePath=false ls-files -- "$SCOPE" | while IFS= read -r f; do
+  git -c core.quotePath=false ls-files -- "$SCOPE" ':(exclude)docs/codebase/' | while IFS= read -r f; do
     [ -n "$f" ] || continue
     [ -f "$f" ] || continue
     bytes=$(wc -c < "$f")
@@ -211,7 +214,10 @@ if ($LASTEXITCODE -ne 0 -or -not $sha) { $sha = 'unknown' }
 $prefix = ''
 if ($Scope -ne '.') { $prefix = ($Scope.TrimEnd('/')) + '/' }
 
-$paths = (& git -c core.quotePath=false ls-files -- $Scope) | Where-Object { $_ -ne '' }
+# Exclude docs/codebase/ — map-codebase's own generated output (the 8 docs + this
+# manifest). Scanning it would make the map look changed on every regen and break the
+# incremental no-op short-circuit.
+$paths = (& git -c core.quotePath=false ls-files -- $Scope ':(exclude)docs/codebase/') | Where-Object { $_ -ne '' }
 
 $lines = New-Object System.Collections.Generic.List[string]
 foreach ($f in $paths) {
@@ -359,9 +365,9 @@ In `skills/map-codebase/SKILL.md`, replace option **(b)** and its surrounding ch
 ````markdown
 2. Check whether `docs/codebase/` already exists. **If it does, do NOT overwrite silently.** Report when it was generated (read the `analysis_date`/`source_sha` frontmatter in `README.md`).
 
-   **Incremental detection (git repos with a saved manifest).** If `docs/codebase/.manifest.tsv` exists and this is a git repo, run the scanner again to a temporary manifest (via the out-file arg) and diff by `hash`:
-   - POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" . docs/codebase/.manifest.new.tsv`
-   - PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -OutFile docs/codebase/.manifest.new.tsv`
+   **Incremental detection (git repos with a saved manifest).** If `docs/codebase/.manifest.tsv` exists and this is a git repo, run the scanner again to a temporary manifest **outside the repo** (via the out-file arg — keep it out of `docs/codebase/` so it can't be committed by accident) and diff by `hash`:
+   - POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" . /tmp/map-codebase.manifest.new.tsv`
+   - PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -OutFile "$env:TEMP\map-codebase.manifest.new.tsv"`
 
    Compare the data rows (ignore `#` header lines) of the new manifest against `docs/codebase/.manifest.tsv`. The **changed set** = rows whose `hash` differs (content changed), rows present only in the new manifest (added), and paths present only in the old manifest (removed).
 
@@ -383,7 +389,7 @@ In `skills/map-codebase/SKILL.md`, replace option **(b)** and its surrounding ch
    | CI/config/env (`.github/`, `Dockerfile`, `*.yml` CI, `.env.example`) | CONCERNS, INTEGRATIONS |
    | Changes spanning more than 3 modules, ambiguous, or general source churn | **Full refresh** (CONVENTIONS always resolves here) |
 
-   Wait for the answer before proceeding. Delete the temporary `docs/codebase/.manifest.new.tsv` after comparing. Whenever you regenerate any document, also overwrite `docs/codebase/.manifest.tsv` with the fresh scan so the next run diffs against current state.
+   Wait for the answer before proceeding. Delete the temporary new manifest after comparing. Whenever you regenerate any document, also overwrite `docs/codebase/.manifest.tsv` with the fresh scan so the next run diffs against current state. (The scanner already excludes `docs/codebase/` itself, so the generated docs never appear as changes.)
 ````
 
 - [ ] **Step 2: Verify the table and no-op logic are present**
@@ -396,23 +402,27 @@ grep -n "no-op\|Map is current\|Conservative coverage\|Update suggested only" sk
 
 Expected: hits for the no-op stop line, the coverage table heading, and option (b).
 
-- [ ] **Step 3: Manually trace the no-op path with a real manifest**
+- [ ] **Step 3: Trace the no-op path the DEPLOYED way (tracked manifest)**
 
-Run (proves the diff logic the skill documents actually distinguishes "no change" from "one change"):
+This must mirror real use: the manifest lives at `docs/codebase/.manifest.tsv` and is git-tracked, so it appears in `git ls-files`. Testing with manifests outside the repo would hide the bug where the manifest scans *itself* and the no-op never fires — the `:(exclude)docs/codebase/` in the scanner is what prevents that. Stage (don't commit) the manifest so `git ls-files` sees it without mutating history:
 
 ```bash
-bash bin/scan-codebase.sh . > /tmp/.m.old.tsv
-bash bin/scan-codebase.sh . > /tmp/.m.new.tsv
-# Identical scans → no data-row differences:
-diff <(grep -v '^#' /tmp/.m.old.tsv) <(grep -v '^#' /tmp/.m.new.tsv) && echo "NO-OP DETECTED (empty changed set)"
-# Now perturb one tracked file's content and rescan:
-printf '\n# scan-test marker\n' >> CLAUDE.md
-bash bin/scan-codebase.sh . > /tmp/.m.new2.tsv
-diff <(grep -v '^#' /tmp/.m.old.tsv) <(grep -v '^#' /tmp/.m.new2.tsv) | grep -q 'CLAUDE.md' && echo "CHANGE DETECTED on CLAUDE.md"
-git checkout -- CLAUDE.md   # revert the perturbation
+mkdir -p docs/codebase
+bash bin/scan-codebase.sh . docs/codebase/.manifest.tsv
+git add docs/codebase/.manifest.tsv                      # staged → git ls-files now lists it
+bash bin/scan-codebase.sh . /tmp/m2.tsv
+# The scan must NOT contain docs/codebase rows, so an unchanged tree → empty changed set:
+grep -c 'docs/codebase' /tmp/m2.tsv                      # expect 0
+diff <(grep -v '^#' docs/codebase/.manifest.tsv) <(grep -v '^#' /tmp/m2.tsv) && echo "NO-OP FIRES (empty changed set)"
+# A real source change is still detected:
+printf '\n# scan-test marker\n' >> SPECKIT_VERSION
+bash bin/scan-codebase.sh . /tmp/m3.tsv
+diff <(grep -v '^#' docs/codebase/.manifest.tsv) <(grep -v '^#' /tmp/m3.tsv) | grep -q 'SPECKIT_VERSION' && echo "CHANGE DETECTED on SPECKIT_VERSION"
+git checkout -- SPECKIT_VERSION
+git rm --cached docs/codebase/.manifest.tsv >/dev/null; rm -rf docs/codebase /tmp/m2.tsv /tmp/m3.tsv   # clean (no commit, no reset)
 ```
 
-Expected: `NO-OP DETECTED (empty changed set)` then `CHANGE DETECTED on CLAUDE.md`, and the working tree is clean afterward.
+Expected: `0`, then `NO-OP FIRES (empty changed set)`, then `CHANGE DETECTED on SPECKIT_VERSION`, working tree clean. Do NOT use `git commit`+`git reset --hard` to make the manifest tracked — a background `reset --hard` can wipe uncommitted work; staging via `git add` is enough and safe.
 
 - [ ] **Step 4: Commit**
 

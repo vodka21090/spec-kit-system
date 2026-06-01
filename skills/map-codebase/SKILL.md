@@ -45,9 +45,9 @@ Templates live at `${CLAUDE_PLUGIN_ROOT}/templates/codebase/` (plugin-owned, not
 1. Determine scope: default to the whole repository. If the user passed an argument, treat it as a sub-path to focus on (reject paths containing `..`, leading `/`, or shell metacharacters).
 2. Check whether `docs/codebase/` already exists. **If it does, do NOT overwrite silently.** Report when it was generated (read the `analysis_date`/`source_sha` frontmatter in `README.md`).
 
-   **Incremental detection (git repos with a saved manifest).** If `docs/codebase/.manifest.tsv` exists and this is a git repo, run the scanner again to a temporary manifest (via the out-file arg) and diff by `hash`:
-   - POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" . docs/codebase/.manifest.new.tsv`
-   - PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -OutFile docs/codebase/.manifest.new.tsv`
+   **Incremental detection (git repos with a saved manifest).** If `docs/codebase/.manifest.tsv` exists and this is a git repo, run the scanner again to a temporary manifest **outside the repo** (via the out-file arg — keep it out of `docs/codebase/` so it can't be committed by accident) and diff by `hash`:
+   - POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" . /tmp/map-codebase.manifest.new.tsv`
+   - PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -OutFile "$env:TEMP\map-codebase.manifest.new.tsv"`
 
    Compare the data rows (ignore `#` header lines) of the new manifest against `docs/codebase/.manifest.tsv`. The **changed set** = rows whose `hash` differs (content changed), rows present only in the new manifest (added), and paths present only in the old manifest (removed).
 
@@ -69,7 +69,7 @@ Templates live at `${CLAUDE_PLUGIN_ROOT}/templates/codebase/` (plugin-owned, not
    | CI/config/env (`.github/`, `Dockerfile`, `*.yml` CI, `.env.example`) | CONCERNS, INTEGRATIONS |
    | Changes spanning more than 3 modules, ambiguous, or general source churn | **Full refresh** (CONVENTIONS always resolves here) |
 
-   Wait for the answer before proceeding. Delete the temporary `docs/codebase/.manifest.new.tsv` after comparing. Whenever you regenerate any document, also overwrite `docs/codebase/.manifest.tsv` with the fresh scan so the next run diffs against current state.
+   Wait for the answer before proceeding. Delete the temporary new manifest after comparing. Whenever you regenerate any document, also overwrite `docs/codebase/.manifest.tsv` with the fresh scan so the next run diffs against current state. (The scanner already excludes `docs/codebase/` itself, so the generated docs never appear as changes.)
 
 ### Step 1 — Quick recon (you, on the main thread)
 
@@ -151,3 +151,4 @@ Do **not** run git. List the files written with line counts, note any skipped/em
 
 - This skill is plugin-only (not part of the spec-kit upstream) and does **not** require `.specify/` — it runs in any repository.
 - Templates are intentionally outside `assets/specify/` so an upstream sync never clobbers them.
+- The scanner (`${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.{sh,ps1}`) is git-only and dependency-free (no Python). It writes `docs/codebase/.manifest.tsv` (git-tracked) — the record of what state the map was built from, used for incremental re-maps. Non-git repos skip it and get the full 4-focus map without incremental.
