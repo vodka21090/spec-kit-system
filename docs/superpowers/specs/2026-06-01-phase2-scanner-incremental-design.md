@@ -67,8 +67,12 @@ which is why the scanner is a shared foundation rather than a feature.
 ## 4. Component 1 — Scanner primitive `bin/scan-codebase.{sh,ps1}`
 
 A cross-platform script pair, matching the existing `bin/init-project.{sh,ps1}` precedent.
-**Pure function:** scans, prints the manifest to **stdout**, writes no files — the caller
-(the skill) decides where to persist.
+Scans and prints the manifest to **stdout** by default. It also accepts an **optional
+output-path argument**; when given, the script writes the manifest itself as **UTF-8, no BOM,
+LF line endings**. This output arg exists specifically to dodge a real persistence hazard: on
+Windows PowerShell 5.1 a `>` redirect emits UTF-16 and `Set-Content -Encoding utf8` adds a BOM
+— either would corrupt the manifest and break cross-platform diffs. Letting the script own the
+write keeps the persisted bytes identical to the POSIX output; the caller still decides the path.
 
 ### 4.1 Input & precondition
 
