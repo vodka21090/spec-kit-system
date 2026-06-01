@@ -70,11 +70,20 @@ A cross-platform script pair, matching the existing `bin/init-project.{sh,ps1}` 
 **Pure function:** scans, prints the manifest to **stdout**, writes no files — the caller
 (the skill) decides where to persist.
 
-### 4.1 Input
+### 4.1 Input & precondition
 
 - Optional sub-path argument to scope the scan; default = repository root.
 - **Reject** arguments containing `..`, a leading `/`, or shell metacharacters — the same
   validation rule `/spec-kit:map-codebase` already applies.
+- **Precondition: a git repository.** The scanner needs `git ls-files` for the
+  gitignore-correct file list. If the target is not a git repo (`git ls-files` fails), the
+  scanner exits non-zero with a clear message; it does **not** reimplement `.gitignore`.
+  `/spec-kit:map-codebase` then degrades to its existing Phase 1 behaviour (Glob-based recon,
+  full 4-focus map, no manifest, no incremental) so the skill's "runs in any repository"
+  promise holds. Non-git repos simply do not get the scanner/incremental features.
+  (A non-git filesystem-walk fallback was considered and rejected: it would mean a second
+  cross-platform walk + binary-detection surface in both `sh` and `ps1` for a rare case the
+  Phase 1 path already covers.)
 
 ### 4.2 Output — manifest (TSV)
 
@@ -190,9 +199,24 @@ support.
 - **Cannot be dogfooded on this repo (122 files).** 2B verification needs a real large repo.
 - `Tokens` column returns to ARCHITECTURE.md's Module Guide (Phase 1 shipped `Lines`).
 
+**OPEN DECISION carried into 2B — accurate tokens vs the no-Python constraint.** During 2A
+brainstorming we considered porting Cartographer's Python/tiktoken scanner for accurate,
+Claude-comparable token counts. It was **deliberately deferred to 2B**, because accurate token
+counts benefit *only* token-budgeted agent assignment (2B); 2A's needs (gitignore-correct
+listing + per-file hash + a coarse size threshold) are fully met by git + bytes/4. Committing
+the whole plugin to a Python runtime now — reversing CLAUDE.md's defining "no uv/Python at
+runtime" promise — to feed a deferred feature is the same "build it because Cartographer has
+it" trap the Phase 2 gating exists to prevent. So when 2B is brainstormed, an early question is:
+does token-budgeted assignment genuinely need tiktoken-accurate counts, or is bytes/4 (which
+over-estimates → safe under-fill) good enough? Note tiktoken is OpenAI's tokenizer, not
+Claude's — "more accurate than bytes/4" but still approximate. If 2B does need it, prefer
+scoping the Python dependency to the scanner feature only (core SDD workflow stays no-Python)
+over dropping the promise wholesale.
+
 **To resume:** new session → "continue Phase 2B brainstorming from the 2026-06-01 spec."
 Read this §6, then run the brainstorming flow focused first on the synthesis-overflow problem
-(the intermediate raw-facts representation) before any agent-assignment design.
+(the intermediate raw-facts representation) before any agent-assignment design; resolve the
+accurate-tokens/Python question there.
 
 ## 7. Verification
 
@@ -223,4 +247,6 @@ Read this §6, then run the brainstorming flow focused first on the synthesis-ov
 - Phase 2B (dynamic agents / scaling) — §6.
 - `map-feature` changes — it is narrow by construction and does not need the scanner now.
 - A separate machine-readable `index.json` — the TSV manifest + frontmatter suffice.
-- Porting Cartographer's Python/tiktoken scanner verbatim — portability conflict (CLAUDE.md).
+- Porting Cartographer's Python/tiktoken scanner — considered and **deferred to 2B**, where
+  accurate tokens would have their only consumer; see §6. 2A stays git-driven / no-Python.
+- A non-git filesystem-walk fallback — rejected; non-git targets degrade to Phase 1 (§4.1).
