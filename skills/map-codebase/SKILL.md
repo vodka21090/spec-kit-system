@@ -56,12 +56,17 @@ Do a lightweight pass so the agents share a baseline. Keep it cheap:
 - Top-level layout: `Glob` the root and one level down.
 - Stack signals: locate manifest/lockfiles (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, etc.) and the primary language.
 - Entry points and test directories.
-- **Capture the commit** for frontmatter `source_sha`: run `git rev-parse --short HEAD`.
-- **Size guardrail.** Count tracked files: `git ls-files | wc -l` (fallback: `Glob` count). If the
-  repo is large (roughly > 1500 files or you expect the full map to overflow a focus agent),
-  **warn the user** and recommend either scoping with a sub-path argument
-  (`/spec-kit:map-codebase <path>`) or mapping feature-by-feature with `/spec-kit:map-feature`.
-  Proceed only after the user confirms. (Automatic token-budgeted scaling is a future Phase 2.)
+
+**Run the scanner (git repos only).** First ensure `docs/codebase/` exists, then run the platform-appropriate scanner with the manifest path as its **out-file argument** (do not use shell redirection — it re-encodes on Windows). It respects `.gitignore`, captures `source_sha`, and gives a token budget:
+- POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" "<scope>" docs/codebase/.manifest.tsv`
+- PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -Scope "<scope>" -OutFile docs/codebase/.manifest.tsv`
+
+where `<scope>` is `.` (whole repo) or the sub-path argument. Read the `#`-comment header lines for `source_sha`, `total_files`, and `total_tokens`.
+
+- **Use `source_sha`** from the header for every document's frontmatter (no separate `git rev-parse` needed).
+- **Size guardrail (from the manifest).** If `total_tokens` is large (roughly > 400,000, i.e. the full map would overflow a focus agent) **warn the user** and recommend scoping with a sub-path (`/spec-kit:map-codebase <path>`) or mapping feature-by-feature with `/spec-kit:map-feature`. Proceed only after the user confirms. (Automatic token-budgeted scaling is a future Phase 2B.)
+
+**If this is NOT a git repository,** skip the scanner and the manifest entirely: fall back to a `Glob`-based file count for the size guardrail, capture no `source_sha` (leave it `unknown`), and proceed with the full 4-focus map below. Incremental re-map (Step 0) is unavailable without git.
 
 Do not read deeply here — that's the agents' job.
 
