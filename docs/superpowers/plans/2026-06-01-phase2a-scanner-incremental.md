@@ -260,6 +260,9 @@ pwsh -File bin/scan-codebase.ps1 -OutFile _scan.ps.tsv
 Get-Content _scan.ps.tsv -TotalCount 8
 ```
 
+If `pwsh` (PowerShell 7) is absent, Windows PowerShell 5.1 works and is the compatibility target — invoke it directly:
+`/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -ExecutionPolicy Bypass -File bin/scan-codebase.ps1 -OutFile _scan.ps.tsv`
+
 Expected: same 5 `#` lines + header as the `.sh` output, written to the repo-relative `_scan.ps.tsv`.
 
 - [ ] **Step 4: Diff against the POSIX output (the parity gate)**
