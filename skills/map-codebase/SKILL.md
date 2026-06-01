@@ -78,7 +78,7 @@ Do a lightweight pass so the agents share a baseline. Keep it cheap:
 - Stack signals: locate manifest/lockfiles (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, etc.) and the primary language.
 - Entry points and test directories.
 
-**Run the scanner (git repos only).** First ensure `docs/codebase/` exists, then run the platform-appropriate scanner with the manifest path as its **out-file argument** (do not use shell redirection — it re-encodes on Windows). It respects `.gitignore`, captures `source_sha`, and gives a token budget:
+**Run the scanner (git repos only).** First ensure `docs/codebase/` exists, then run the platform-appropriate scanner with the manifest path as its **out-file argument** (do not use shell redirection — it re-encodes on Windows). The scanner excludes the map's own outputs (`docs/codebase/` and `AGENTS.md`), so persisting here is safe even though Step 4 rewrites `AGENTS.md` afterward. It respects `.gitignore`, captures `source_sha`, and gives a token budget:
 - POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" "<scope>" docs/codebase/.manifest.tsv`
 - PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -Scope "<scope>" -OutFile docs/codebase/.manifest.tsv`
 
@@ -145,7 +145,7 @@ Per-feature blast-radius context may also exist at `specs/<feature>/codebase-con
 
 ### Step 5 — Report (no commit)
 
-Do **not** run git. List the files written with line counts, note any skipped/empty sections, and tell the user they can run `/spec-kit:git-commit` to save the map. Suggest `/spec-kit:agent-md-improver` if they want to enrich the rest of `AGENTS.md`.
+Do **not** run git. List the files written with line counts (include `docs/codebase/.manifest.tsv`), note any skipped/empty sections, and tell the user they can run `/spec-kit:git-commit` to save the map. Suggest `/spec-kit:agent-md-improver` if they want to enrich the rest of `AGENTS.md`.
 
 ## Notes
 

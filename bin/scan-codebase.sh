@@ -24,11 +24,13 @@ SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 prefix=""
 [ "$SCOPE" != "." ] && prefix="${SCOPE%/}/"
 
-# Exclude docs/codebase/ — that is map-codebase's own generated output (the 8 docs
-# plus this manifest). Scanning it would make the map appear to change every time it
-# is regenerated, and would stop the incremental no-op short-circuit from ever firing.
+# Exclude map-codebase's own generated outputs — docs/codebase/ (the 8 docs plus this
+# manifest) and AGENTS.md (map-codebase upserts its block there every run). Scanning them
+# would make the map look changed on every regenerate and stop the incremental no-op
+# short-circuit from ever firing. AGENTS.md is also newly-created on first run (untracked
+# at scan time, tracked after the user commits) — excluding it avoids that false "added".
 body="$(
-  git -c core.quotePath=false ls-files -- "$SCOPE" ':(exclude)docs/codebase/' | while IFS= read -r f; do
+  git -c core.quotePath=false ls-files -- "$SCOPE" ':(exclude)docs/codebase/' ':(exclude)AGENTS.md' | while IFS= read -r f; do
     [ -n "$f" ] || continue
     [ -f "$f" ] || continue
     bytes=$(wc -c < "$f")
