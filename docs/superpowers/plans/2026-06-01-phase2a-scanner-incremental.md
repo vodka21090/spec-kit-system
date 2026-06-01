@@ -71,7 +71,7 @@ prefix=""
 [ "$SCOPE" != "." ] && prefix="${SCOPE%/}/"
 
 body="$(
-  git ls-files -- "$SCOPE" | while IFS= read -r f; do
+  git -c core.quotePath=false ls-files -- "$SCOPE" | while IFS= read -r f; do
     [ -n "$f" ] || continue
     [ -f "$f" ] || continue
     bytes=$(wc -c < "$f")
@@ -150,10 +150,10 @@ Expected: `COUNT OK (...)`. (If the working tree has index-only deletions the tw
 Run:
 
 ```bash
-( cd /tmp && rm -rf nogit-scan && mkdir nogit-scan && cd nogit-scan && bash "$OLDPWD/bin/scan-codebase.sh"; echo "exit=$?" )
+ROOT=$(pwd) && ( cd /tmp && rm -rf nogit-scan && mkdir nogit-scan && cd nogit-scan && bash "$ROOT/bin/scan-codebase.sh"; echo "exit=$?" )
 ```
 
-Expected: stderr `ERROR: not a git repository ...` and `exit=3`.
+Expected: stderr `ERROR: not a git repository ...` and `exit=3`. (Capture `$ROOT` before `cd` — a bare `$OLDPWD` gets reassigned by the second `cd`.)
 
 - [ ] **Step 7: Commit**
 
@@ -194,6 +194,11 @@ param([string]$Scope = '.', [string]$OutFile = '')
 
 $ErrorActionPreference = 'Stop'
 
+# Decode git's stdout as UTF-8 so non-ASCII filenames survive (Windows console
+# defaults to an OEM codepage and would mangle them, mismatching the .sh output).
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 if ($Scope -match '\.\.') { [Console]::Error.WriteLine("ERROR: scope must not contain '..': $Scope"); exit 2 }
 if ($Scope.StartsWith('/')) { [Console]::Error.WriteLine("ERROR: scope must not be absolute: $Scope"); exit 2 }
 
@@ -206,7 +211,7 @@ if ($LASTEXITCODE -ne 0 -or -not $sha) { $sha = 'unknown' }
 $prefix = ''
 if ($Scope -ne '.') { $prefix = ($Scope.TrimEnd('/')) + '/' }
 
-$paths = (& git ls-files -- $Scope) | Where-Object { $_ -ne '' }
+$paths = (& git -c core.quotePath=false ls-files -- $Scope) | Where-Object { $_ -ne '' }
 
 $lines = New-Object System.Collections.Generic.List[string]
 foreach ($f in $paths) {
