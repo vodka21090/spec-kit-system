@@ -1,0 +1,20 @@
+{
+  "name": "express-app",
+  "version": "1.0.0",
+  "description": "Sample fixture with known-vulnerable dependencies for skill evals.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "echo 'no build step' ",
+    "test": "echo 'no tests' && exit 0"
+  },
+  "dependencies": {
+    "express": "4.17.1",
+    "lodash": "4.17.15",
+    "minimist": "1.2.0",
+    "axios": "0.21.0"
+  },
+  "devDependencies": {
+    "node-fetch": "2.6.0"
+  }
+}
