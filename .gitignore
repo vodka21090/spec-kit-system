@@ -2,4 +2,6 @@ tmp/.specify/
 tmp/.claude/
 tmp/CLAUDE.md
 tmp/test/
-.claude/
+
+# Repomix codebase dumps (generated scratch artifacts)
+cartographer-repomix.md

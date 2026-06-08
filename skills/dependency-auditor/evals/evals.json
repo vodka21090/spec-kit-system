@@ -1,0 +1,26 @@
+{
+  "skill_name": "dependency-auditor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We've got a Node/Express service and npm audit is screaming about a bunch of stuff. Can you go through it, figure out what's actually worth fixing vs noise, and tell me what'll break if we upgrade? The repo is in fixtures/express-app.",
+      "expected_output": "A report that: parses the npm audit + GHSA findings, separates direct vs transitive and prod vs dev, triages each into a fixability bucket, analyzes breaking changes for any major bumps with codebase-usage evidence, proposes specific remediations, applies safe fixes as a reviewable patch, and gives an automated + manual parity test plan. Plus a concise chat summary leading with counts by severity.",
+      "files": ["fixtures/express-app/package.json", "fixtures/express-app/package-lock.json"],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "prompt": "Spring Boot service in fixtures/spring-app — security flagged jackson-databind and a couple of transitive deps as vulnerable. Which ones can we actually fix, what's the upgrade risk, and how do I verify nothing broke after?",
+      "expected_output": "Maven/Gradle-aware audit: resolves the dependency tree, confirms each finding against GHSA (ecosystem Maven), identifies transitive vs direct and recommends the right fix mechanism (parent bump vs dependencyManagement/constraint), analyzes JDK/API breaking changes, and produces a parity test plan with mvn/gradle commands plus targeted manual checks. Chat summary up front.",
+      "files": ["fixtures/spring-app/pom.xml"],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "prompt": "Is it safe to bump lodash to fix the prototype pollution advisory in our frontend? We're on 4.17.15. Just want to know the risk and how to test it before I do it.",
+      "expected_output": "Looks up the lodash advisory in GHSA/OSV, confirms 4.17.15 is in the vulnerable range and gives the first patched version, assesses that the fix is a patch-level in-range bump (low breaking-change risk), explains why, and gives a focused parity test plan (build, tests, smoke + any lodash-specific manual checks). Does not over-engineer a major upgrade. Even though this is phrased as a question, it should trigger the skill and produce the analysis.",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}

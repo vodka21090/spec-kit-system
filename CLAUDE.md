@@ -25,6 +25,7 @@ assets/specify/               Bootstrap payload -- vendored .specify/ tree
   extensions.yml workflows/ integrations/ init-options.json integration.json
 templates/codebase/           Codebase-map doc templates + shared agent-prompt.md + feature-context.md (plugin-owned; NOT upstream payload)
 bin/init-project.{sh,ps1}     Idempotent bootstrap helpers (POSIX + Windows)
+bin/scan-codebase.{sh,ps1}    Git-driven repo scanner -> TSV manifest (token est + content hash); powers map-codebase recon + incremental
 tmp/                          Upstream probe (uv-installed). Reference only, do not edit.
 ```
 

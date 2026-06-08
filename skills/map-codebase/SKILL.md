@@ -43,12 +43,33 @@ Templates live at `${CLAUDE_PLUGIN_ROOT}/templates/codebase/` (plugin-owned, not
 ### Step 0 — Scope and existing-map check
 
 1. Determine scope: default to the whole repository. If the user passed an argument, treat it as a sub-path to focus on (reject paths containing `..`, leading `/`, or shell metacharacters).
-2. Check whether `docs/codebase/` already exists. **If it does, do NOT overwrite silently.** Report when it was generated (read the `analysis_date` frontmatter in `README.md`) and ask the user to choose:
-   - **(a) Refresh all** — regenerate all 8 files.
-   - **(b) Update changed only** — regenerate only the documents whose underlying areas changed since the last map (use `git log`/`git diff` to judge; fall back to (a) if you can't tell).
-   - **(c) Skip** — leave the existing map untouched.
+2. Check whether `docs/codebase/` already exists. **If it does, do NOT overwrite silently.** Report when it was generated (read the `analysis_date`/`source_sha` frontmatter in `README.md`).
 
-   Wait for the answer before proceeding.
+   **Incremental detection (git repos with a saved manifest).** If `docs/codebase/.manifest.tsv` exists and this is a git repo, run the scanner again to a temporary manifest **outside the repo** (via the out-file arg — keep it out of `docs/codebase/` so it can't be committed by accident) and diff by `hash`:
+   - POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" . /tmp/map-codebase.manifest.new.tsv`
+   - PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -OutFile "$env:TEMP\map-codebase.manifest.new.tsv"`
+
+   Compare the data rows (ignore `#` header lines) of the new manifest against `docs/codebase/.manifest.tsv`. The **changed set** = rows whose `hash` differs (content changed), rows present only in the new manifest (added), and paths present only in the old manifest (removed).
+
+   - **Changed set empty → report "Map is current at `<source_sha>`, nothing to do" and STOP.** Do not dispatch any agents. (This is the no-op short-circuit.)
+   - **Changed set non-empty →** present the changed files grouped by `module`, plus a **suggested regeneration set** derived from the conservative coverage table below, then ask the user to choose:
+     - **(a) Refresh all** — regenerate all 8 files.
+     - **(b) Update suggested only** — regenerate just the suggested docs; leave the rest, but rewrite their `source_sha` and overwrite `.manifest.tsv`.
+     - **(c) Skip** — leave the existing map untouched.
+
+   If there is no `.manifest.tsv` (map predates this feature) or this is not a git repo, fall back to the previous behaviour: judge changed areas with `git log`/`git diff` if available, otherwise offer (a) Refresh all / (c) Skip.
+
+   **Conservative coverage table (default on any uncertainty = full refresh):**
+
+   | Change signal | Suggested docs |
+   |---|---|
+   | Lockfile/manifest (`package.json`, `*.lock`, `go.mod`, `pyproject.toml`, `Cargo.toml`) | TECH-STACK, INTEGRATIONS |
+   | Test-only files (`*_test.*`, `*.spec.*`, `*.test.*`, `tests/`, `spec/`) | TESTING |
+   | Top-level module added/removed | STRUCTURE, ARCHITECTURE, README |
+   | CI/config/env (`.github/`, `Dockerfile`, `*.yml` CI, `.env.example`) | CONCERNS, INTEGRATIONS |
+   | Changes spanning more than 3 modules, ambiguous, or general source churn | **Full refresh** (CONVENTIONS always resolves here) |
+
+   Wait for the answer before proceeding. Delete the temporary new manifest after comparing. Whenever you regenerate any document, also overwrite `docs/codebase/.manifest.tsv` with the fresh scan so the next run diffs against current state. (The scanner already excludes `docs/codebase/` itself, so the generated docs never appear as changes.)
 
 ### Step 1 — Quick recon (you, on the main thread)
 
@@ -56,12 +77,17 @@ Do a lightweight pass so the agents share a baseline. Keep it cheap:
 - Top-level layout: `Glob` the root and one level down.
 - Stack signals: locate manifest/lockfiles (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, etc.) and the primary language.
 - Entry points and test directories.
-- **Capture the commit** for frontmatter `source_sha`: run `git rev-parse --short HEAD`.
-- **Size guardrail.** Count tracked files: `git ls-files | wc -l` (fallback: `Glob` count). If the
-  repo is large (roughly > 1500 files or you expect the full map to overflow a focus agent),
-  **warn the user** and recommend either scoping with a sub-path argument
-  (`/spec-kit:map-codebase <path>`) or mapping feature-by-feature with `/spec-kit:map-feature`.
-  Proceed only after the user confirms. (Automatic token-budgeted scaling is a future Phase 2.)
+
+**Run the scanner (git repos only).** First ensure `docs/codebase/` exists, then run the platform-appropriate scanner with the manifest path as its **out-file argument** (do not use shell redirection — it re-encodes on Windows). The scanner excludes the map's own outputs (`docs/codebase/` and `AGENTS.md`), so persisting here is safe even though Step 4 rewrites `AGENTS.md` afterward. It respects `.gitignore`, captures `source_sha`, and gives a token budget:
+- POSIX: `bash "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.sh" "<scope>" docs/codebase/.manifest.tsv`
+- PowerShell: `pwsh -File "${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.ps1" -Scope "<scope>" -OutFile docs/codebase/.manifest.tsv`
+
+where `<scope>` is `.` (whole repo) or the sub-path argument. Read the `#`-comment header lines for `source_sha`, `total_files`, and `total_tokens`.
+
+- **Use `source_sha`** from the header for every document's frontmatter (no separate `git rev-parse` needed).
+- **Size guardrail (from the manifest).** If `total_tokens` is large (roughly > 400,000, i.e. the full map would overflow a focus agent) **warn the user** and recommend scoping with a sub-path (`/spec-kit:map-codebase <path>`) or mapping feature-by-feature with `/spec-kit:map-feature`. Proceed only after the user confirms. (Automatic token-budgeted scaling is a future Phase 2B.)
+
+**If this is NOT a git repository,** skip the scanner and the manifest entirely: fall back to a `Glob`-based file count for the size guardrail, capture no `source_sha` (leave it `unknown`), and proceed with the full 4-focus map below. Incremental re-map (Step 0) is unavailable without git.
 
 Do not read deeply here — that's the agents' job.
 
@@ -119,9 +145,10 @@ Per-feature blast-radius context may also exist at `specs/<feature>/codebase-con
 
 ### Step 5 — Report (no commit)
 
-Do **not** run git. List the files written with line counts, note any skipped/empty sections, and tell the user they can run `/spec-kit:git-commit` to save the map. Suggest `/spec-kit:agent-md-improver` if they want to enrich the rest of `AGENTS.md`.
+Do **not** run git. List the files written with line counts (include `docs/codebase/.manifest.tsv`), note any skipped/empty sections, and tell the user they can run `/spec-kit:git-commit` to save the map. Suggest `/spec-kit:agent-md-improver` if they want to enrich the rest of `AGENTS.md`.
 
 ## Notes
 
 - This skill is plugin-only (not part of the spec-kit upstream) and does **not** require `.specify/` — it runs in any repository.
 - Templates are intentionally outside `assets/specify/` so an upstream sync never clobbers them.
+- The scanner (`${CLAUDE_PLUGIN_ROOT}/bin/scan-codebase.{sh,ps1}`) is git-only and dependency-free (no Python). It writes `docs/codebase/.manifest.tsv` (git-tracked) — the record of what state the map was built from, used for incremental re-maps. Non-git repos skip it and get the full 4-focus map without incremental.
